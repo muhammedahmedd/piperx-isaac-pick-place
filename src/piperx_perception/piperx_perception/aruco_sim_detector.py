@@ -83,7 +83,7 @@ class ArucoSimDetector(Node):
             tvec = tvecs[i][0]
 
             self.get_logger().info(
-                f"Marker {marker_id} tvec in sim_camera frame: "
+                f"Marker {marker_id} tvec in camera optical frame: "
                 f"x={tvec[0]:.4f} m, y={tvec[1]:.4f} m, z={tvec[2]:.4f} m"
             )
 
