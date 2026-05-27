@@ -2,14 +2,18 @@
 
 import cv2
 import rclpy
+import tf2_ros
 import numpy as np
 import cv2.aruco as aruco
 
 from cv_bridge import CvBridge
 from rclpy.node import Node
+from rclpy.time import Time
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
 from scipy.spatial.transform import Rotation
+from rclpy.duration import Duration
+from tf_transformations import quaternion_matrix, quaternion_from_matrix
 
 
 class ArucoSimDetector(Node):
@@ -47,6 +51,15 @@ class ArucoSimDetector(Node):
             "/aruco/marker_pose",
             10
         )
+
+        self.pose_base_pub = self.create_publisher(
+            PoseStamped,
+            "/aruco/marker_pose_base",
+            10
+        )
+
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
         self.get_logger().info("Aruco sim detector started.")
 
@@ -94,6 +107,7 @@ class ArucoSimDetector(Node):
         tvec = tvecs[0][0]
 
         self.publish_marker_pose(marker_id, rvec, tvec, msg)
+        self.publish_marker_pose_base(marker_id, rvec, tvec, msg)
 
     def publish_marker_pose(self, marker_id, rvec, tvec, image_msg):
         rotation_matrix, _ = cv2.Rodrigues(rvec)
@@ -118,7 +132,66 @@ class ArucoSimDetector(Node):
         self.get_logger().info(
             f"Published marker {marker_id} pose to /aruco/marker_pose"
         )
-  
+
+    def publish_marker_pose_base(self, marker_id, rvec, tvec, image_msg):
+        try:
+            tf_base_camera = self.tf_buffer.lookup_transform(
+                "base_link",
+                "Camera",
+                Time(),
+                timeout=Duration(seconds=0.5)
+            )
+        except Exception as e:
+            self.get_logger().warn(f"Could not transform base_link to Camera: {e}")
+            return
+        
+        # T_base_camera
+        q_base_camera = tf_base_camera.transform.rotation
+        t_base_camera = tf_base_camera.transform.translation
+
+        T_base_camera = quaternion_matrix([
+            q_base_camera.x,
+            q_base_camera.y,
+            q_base_camera.z,
+            q_base_camera.w
+        ])
+
+        T_base_camera[0, 3] = t_base_camera.x
+        T_base_camera[1, 3] = t_base_camera.y
+        T_base_camera[2, 3] = t_base_camera.z
+
+        # T_optical_marker
+        R_optical_marker, _ = cv2.Rodrigues(rvec)
+        
+        T_optical_marker = np.eye(4)
+        T_optical_marker[0:3, 0:3] = R_optical_marker
+        T_optical_marker[0, 3] = tvec[0]
+        T_optical_marker[1, 3] = tvec[1]
+        T_optical_marker[2, 3] = tvec[2]
+
+        # mapping the marker pose from the camera optical frame into the base_link frame
+        T_base_marker = T_base_camera @ T_optical_marker
+
+        quat_base_marker = quaternion_from_matrix(T_base_marker)
+
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = image_msg.header.stamp
+        pose_msg.header.frame_id = "base_link"
+
+        pose_msg.pose.position.x = T_base_marker[0, 3]
+        pose_msg.pose.position.y = T_base_marker[1, 3]
+        pose_msg.pose.position.z = T_base_marker[2, 3]
+
+        pose_msg.pose.orientation.x = quat_base_marker[0]
+        pose_msg.pose.orientation.y = quat_base_marker[1]
+        pose_msg.pose.orientation.z = quat_base_marker[2]
+        pose_msg.pose.orientation.w = quat_base_marker[3]
+
+        self.pose_base_pub.publish(pose_msg)
+
+        self.get_logger().info(
+            f"Published marker {marker_id} pose to /aruco/marker_pose_base"
+        )
 
 
 def main(args=None):
