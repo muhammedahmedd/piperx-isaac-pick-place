@@ -2,6 +2,7 @@
 #define PIPERX_SIM_CONTROL__PIPERX_SIM_CONTROL_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
 
 class PiperXSimControl : public rclcpp::Node
@@ -12,6 +13,8 @@ public:
 
   ~PiperXSimControl() = default;
 
+  void markerPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+
   void mainJointMovement();
 
   void moveArmJoints(const std::vector<double> & joint_angles);
@@ -20,6 +23,8 @@ public:
 
 
 private:
+
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr marker_pose_sub_;
 
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> arm_group_;
 

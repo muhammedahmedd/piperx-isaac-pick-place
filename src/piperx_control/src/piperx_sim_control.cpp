@@ -3,6 +3,25 @@
 PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
 {
   RCLCPP_INFO(this->get_logger(), "Control node has started......");
+
+
+  marker_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    "/aruco/marker_pose_base",
+    10,
+    std::bind(&PiperXSimControl::markerPoseCallback, this, std::placeholders::_1)
+  );
+}
+
+void PiperXSimControl::markerPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+{
+  RCLCPP_INFO(
+    this->get_logger(),
+    "Marker pose in %s: x=%.3f, y=%.3f, z=%.3f",
+    msg->header.frame_id.c_str(),
+    msg->pose.position.x,
+    msg->pose.position.y,
+    msg->pose.position.z
+  );
 }
 
 void PiperXSimControl::mainJointMovement()
