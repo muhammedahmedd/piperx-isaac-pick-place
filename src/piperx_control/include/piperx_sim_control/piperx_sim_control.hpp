@@ -3,6 +3,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2/exceptions.h>
 #include <moveit/move_group_interface/move_group_interface.h>
 
 class PiperXSimControl : public rclcpp::Node
@@ -13,11 +16,13 @@ public:
 
   ~PiperXSimControl() = default;
 
+  void markerPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  
   void initializeMoveIt();
 
   void runStateMachine();
 
-  void markerPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  void printTcpTransform();
 
   void moveArmJoints(const std::vector<double> & joint_angles);
 
@@ -36,6 +41,10 @@ private:
   };
 
   PickState current_state_;
+
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr marker_pose_sub_;
 

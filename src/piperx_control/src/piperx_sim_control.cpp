@@ -4,6 +4,16 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
 {
   RCLCPP_INFO(this->get_logger(), "Control node has started......");
 
+  tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+
+  tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+  marker_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    "/aruco/marker_pose_base",
+    1,
+    std::bind(&PiperXSimControl::markerPoseCallback, this, std::placeholders::_1)
+  );
+
   current_state_ = PickState::MOVE_TO_SCAN;
 
   has_marker_pose_ = false;
@@ -15,11 +25,6 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
   marker_sum_y_ = 0.0;
   marker_sum_z_ = 0.0;
 
-  marker_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-    "/aruco/marker_pose_base",
-    1,
-    std::bind(&PiperXSimControl::markerPoseCallback, this, std::placeholders::_1)
-  );
 }
 
 void PiperXSimControl::markerPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
@@ -77,6 +82,12 @@ void PiperXSimControl::initializeMoveIt()
 
   gripper_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
     shared_from_this(), "gripper");
+
+  RCLCPP_INFO(
+    this->get_logger(),
+    "Arm end-effector link: %s",
+    arm_group_->getEndEffectorLink().c_str()
+  );
 }
 
 void PiperXSimControl::runStateMachine()
@@ -133,6 +144,35 @@ void PiperXSimControl::runStateMachine()
   }
 }
 
+void PiperXSimControl::printTcpTransform()
+{
+  try
+  {
+    geometry_msgs::msg::TransformStamped tf_link6_tcp =
+      tf_buffer_->lookupTransform(
+        "link6",
+        "gripper_tcp",
+        tf2::TimePointZero
+      );
+
+    RCLCPP_INFO(
+      this->get_logger(),
+      "link6 -> gripper_tcp: x=%.4f, y=%.4f, z=%.4f",
+      tf_link6_tcp.transform.translation.x,
+      tf_link6_tcp.transform.translation.y,
+      tf_link6_tcp.transform.translation.z
+    );
+  }
+  catch (const tf2::TransformException & ex)
+  {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Could not lookup link6 -> gripper_tcp transform: %s",
+      ex.what()
+    );
+  }
+}
+
 void PiperXSimControl::moveArmJoints(const std::vector<double> & joint_angles)
 {
   arm_group_->setJointValueTarget(joint_angles);
@@ -181,6 +221,8 @@ int main(int argc, char ** argv)
   }
 
   node->runStateMachine();  // WAIT_FOR_MARKER: freeze averaged marker pose if ready
+
+  node->printTcpTransform();
 
   rclcpp::shutdown();
   
