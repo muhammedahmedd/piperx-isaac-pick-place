@@ -15,7 +15,7 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
 
   has_marker_pose_ = false;
 
-  required_marker_samples_ = 20;
+  required_marker_samples_ = 45;
   marker_sample_count_ = 0;
 
   marker_sum_x_ = 0.0;
@@ -142,12 +142,66 @@ void PiperXSimControl::runStateMachine()
       }
 
       break;
+    
+    case PickState::MOVE_TO_PICK:
+      RCLCPP_INFO(this->get_logger(), "State: MOVE_TO_PICK");
+
+      moveTcpToMarker();
+
+      current_state_ = PickState::CLOSE_GRIPPER;
+
+      break;
 
     default:
       RCLCPP_INFO(this->get_logger(), "State not implemented yet.");
 
       break;
   }
+}
+
+void PiperXSimControl::moveTcpToMarker()
+{
+  geometry_msgs::msg::Pose target_pose;
+
+  target_pose.position.x = marker_pose_.pose.position.x;
+  target_pose.position.y = marker_pose_.pose.position.y;
+  target_pose.position.z = marker_pose_.pose.position.z;
+
+  target_pose.orientation.x = 0.0;
+  target_pose.orientation.y = 1.0;
+  target_pose.orientation.z = 0.0;
+  target_pose.orientation.w = 0.0;
+
+  RCLCPP_INFO(
+    this->get_logger(),
+    "Moving gripper_tcp to marker target: x=%.3f, y=%.3f, z=%.3f",
+    target_pose.position.x,
+    target_pose.position.y,
+    target_pose.position.z
+  );
+
+  arm_group_->setStartStateToCurrentState();
+  arm_group_->setPoseTarget(target_pose);
+
+  moveit::core::MoveItErrorCode plan_result = arm_group_->plan(arm_plan_);
+
+  RCLCPP_INFO(
+    this->get_logger(),
+    "MoveIt plan result code: %d",
+    plan_result.val
+  );
+
+  if (plan_result == moveit::core::MoveItErrorCode::SUCCESS)
+  {
+    RCLCPP_INFO(this->get_logger(), "Pregrasp plan succeeded. Executing...");
+    arm_group_->execute(arm_plan_);
+  }
+  else
+  {
+    RCLCPP_ERROR(this->get_logger(), "Pregrasp plan failed.");
+  }
+
+  arm_group_->clearPoseTargets();
 }
 
 void PiperXSimControl::moveArmJoints(const std::vector<double> & joint_angles)
@@ -191,13 +245,14 @@ int main(int argc, char ** argv)
 
   rclcpp::Rate rate(30);
 
-  for (int i = 0; i < 200; i++)
+  for (int i = 0; i < 400; i++)
   {
     rclcpp::spin_some(node);
     rate.sleep();
   }
 
   node->runStateMachine();  // WAIT_FOR_MARKER: freeze averaged marker pose if ready
+  node->runStateMachine();  // MOVE_TO_PICK
 
   rclcpp::shutdown();
   
