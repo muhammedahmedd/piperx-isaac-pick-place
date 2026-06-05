@@ -19,15 +19,15 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
   // Tuned for grasping the simulated cube (5 cm sides).
   gripper_grasp_joints_ = {0.015, -0.015};
 
-  marker_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-    "/aruco/marker_pose_base",
+  cube_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    "/aruco/cube_pose_base",
     1,
-    std::bind(&PiperXSimControl::markerPoseCallback, this, std::placeholders::_1)
+    std::bind(&PiperXSimControl::cubePoseCallback, this, std::placeholders::_1)
   );
 
 }
 
-void PiperXSimControl::markerPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+void PiperXSimControl::cubePoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
   if (current_state_ != PickState::WAIT_FOR_MARKER)
   {

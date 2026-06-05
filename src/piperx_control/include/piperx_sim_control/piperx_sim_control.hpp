@@ -13,7 +13,7 @@ public:
 
   ~PiperXSimControl() = default;
 
-  void markerPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  void cubePoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
   
   void initializeMoveIt();
 
