@@ -9,7 +9,7 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
 
   has_marker_pose_ = false;
 
-  required_marker_samples_ = 25;
+  required_marker_samples_ = 1;
   marker_sample_count_ = 0;
 
   marker_sum_x_ = 0.0;
@@ -75,14 +75,14 @@ void PiperXSimControl::initializeMoveIt()
   gripper_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
     shared_from_this(), "gripper");
 
-  arm_group_->setMaxVelocityScalingFactor(0.8);
-  arm_group_->setMaxAccelerationScalingFactor(0.3);
+  arm_group_->setMaxVelocityScalingFactor(1);
+  arm_group_->setMaxAccelerationScalingFactor(1);
 
   if (!arm_group_->setEndEffectorLink("gripper_tcp"))
   {
     RCLCPP_ERROR(this->get_logger(), "Failed to set gripper_tcp as end-effector link.");
   }
-}
+}  
 
 void PiperXSimControl::runStateMachine()
 {
@@ -91,12 +91,14 @@ void PiperXSimControl::runStateMachine()
     case PickState::MOVE_TO_SCAN:
       RCLCPP_INFO(this->get_logger(), "State: MOVE_TO_SCAN");
 
-      moveArmJoints(scan_pose_joints_);
-
-      RCLCPP_INFO(this->get_logger(), "Waiting for arm/camera to settle...");
-      rclcpp::sleep_for(std::chrono::seconds(8));
-
-      current_state_ = PickState::OPEN_GRIPPER;
+      if (moveArmJoints(scan_pose_joints_))
+      {
+        current_state_ = PickState::OPEN_GRIPPER;
+      }
+      else
+      {
+        RCLCPP_WARN(this->get_logger(), "Scan pose failed, retrying...");
+      } 
 
       break;
 
@@ -129,10 +131,14 @@ void PiperXSimControl::runStateMachine()
     case PickState::MOVE_TO_PICK:
       RCLCPP_INFO(this->get_logger(), "State: MOVE_TO_PICK");
 
-      moveTcpToMarker();
-      rclcpp::sleep_for(std::chrono::seconds(5));
-
-      current_state_ = PickState::CLOSE_GRIPPER;
+      if (moveTcpToMarker())
+      {
+        current_state_ = PickState::CLOSE_GRIPPER;
+      }
+      else
+      {
+        RCLCPP_WARN(this->get_logger(), "Pick failed, retrying...");
+      }
 
       break;
 
@@ -147,10 +153,16 @@ void PiperXSimControl::runStateMachine()
 
     case PickState::LIFT:
 
-      moveArmJoints(scan_pose_joints_);
+      if (moveArmJoints(scan_pose_joints_))
+      {
+        RCLCPP_INFO(this->get_logger(), "Lift succeeded.");
+        current_state_ = PickState::DONE;
+      }
+      else
+      {
+        RCLCPP_WARN(this->get_logger(), "Lift failed, retrying...");
+      }
 
-      current_state_ = PickState::DONE;
-        
       break;
 
     case PickState::DONE:
@@ -164,13 +176,13 @@ void PiperXSimControl::runStateMachine()
   }
 }
 
-void PiperXSimControl::moveTcpToMarker()
+bool PiperXSimControl::moveTcpToMarker()
 {
   geometry_msgs::msg::Pose target_pose;
 
   target_pose.position.x = marker_pose_.pose.position.x;
   target_pose.position.y = marker_pose_.pose.position.y;
-  target_pose.position.z = marker_pose_.pose.position.z - 0.02;
+  target_pose.position.z = marker_pose_.pose.position.z;
 
   target_pose.orientation.x = 0.0;
   target_pose.orientation.y = 1.0;
@@ -183,27 +195,49 @@ void PiperXSimControl::moveTcpToMarker()
   if (arm_group_->plan(arm_plan_) == moveit::core::MoveItErrorCode::SUCCESS)
   {
     RCLCPP_INFO(this->get_logger(), "Pregrasp plan succeeded. Executing...");
-    arm_group_->execute(arm_plan_);
+    auto result = arm_group_->execute(arm_plan_);
+    arm_group_->clearPoseTargets();
+
+    if (result == moveit::core::MoveItErrorCode::SUCCESS)
+    {
+      return true;
+    }
+    else
+    {
+      RCLCPP_ERROR(this->get_logger(), "Execute failed.");
+      return false;
+    }
   }
   else
   {
     RCLCPP_ERROR(this->get_logger(), "Pregrasp plan failed.");
+    arm_group_->clearPoseTargets();
+    return false;
   }
-
-  arm_group_->clearPoseTargets();
 }
 
-void PiperXSimControl::moveArmJoints(const std::vector<double> & joint_angles)
+bool PiperXSimControl::moveArmJoints(const std::vector<double> & joint_angles)
 {
   arm_group_->setJointValueTarget(joint_angles);
 
   if (arm_group_->plan(arm_plan_) == moveit::core::MoveItErrorCode::SUCCESS)
   {
-    arm_group_->execute(arm_plan_);
+    auto result = arm_group_->execute(arm_plan_);
+
+    if (result == moveit::core::MoveItErrorCode::SUCCESS)
+    {
+      return true;
+    }
+    else
+    {
+      RCLCPP_ERROR(this->get_logger(), "Arm execute failed.");
+      return false;
+    }
   }
-  else 
+  else
   {
-    RCLCPP_ERROR(this->get_logger(), "Arm plan failed");
+    RCLCPP_ERROR(this->get_logger(), "Arm plan failed.");
+    return false;
   }
 }
 
