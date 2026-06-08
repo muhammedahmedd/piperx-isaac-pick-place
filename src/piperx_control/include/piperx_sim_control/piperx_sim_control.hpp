@@ -19,7 +19,7 @@ public:
 
   void runStateMachine();
 
-  bool moveTcpToMarker();
+  bool moveTcpToCube();
 
   bool moveArmJoints(const std::vector<double> & joint_angles);
 
@@ -34,25 +34,25 @@ private:
     OPEN_GRIPPER,
     WAIT_FOR_MARKER,
     MOVE_TO_PICK,
-    CLOSE_GRIPPER,
-    LIFT,
+    GRASP,
+    PLACE,
     DONE
   };
 
   PickState current_state_;
 
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr marker_pose_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr cube_pose_sub_;
 
-  geometry_msgs::msg::PoseStamped marker_pose_;
+  geometry_msgs::msg::PoseStamped cube_pose_;
 
-  bool has_marker_pose_;
+  bool has_cube_pose_;
 
-  int required_marker_samples_;
-  int marker_sample_count_;
+  int required_cube_samples_;
+  int cube_sample_count_;
 
-  double marker_sum_x_;
-  double marker_sum_y_;
-  double marker_sum_z_;
+  double cube_sum_x_;
+  double cube_sum_y_;
+  double cube_sum_z_;
 
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> arm_group_;
 

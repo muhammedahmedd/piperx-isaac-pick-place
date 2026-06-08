@@ -7,14 +7,14 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
 
   current_state_ = PickState::OPEN_GRIPPER;
 
-  has_marker_pose_ = false;
+  has_cube_pose_ = false;
 
-  required_marker_samples_ = 1;
-  marker_sample_count_ = 0;
+  required_cube_samples_ = 1;
+  cube_sample_count_ = 0;
 
-  marker_sum_x_ = 0.0;
-  marker_sum_y_ = 0.0;
-  marker_sum_z_ = 0.0;
+  cube_sum_x_ = 0.0;
+  cube_sum_y_ = 0.0;
+  cube_sum_z_ = 0.0;
 
   // Tuned for grasping the simulated cube (5 cm sides).
   gripper_grasp_joints_ = {0.015, -0.015};
@@ -34,36 +34,36 @@ void PiperXSimControl::cubePoseCallback(const geometry_msgs::msg::PoseStamped::S
     return;
   }
 
-  if (has_marker_pose_)
+  if (has_cube_pose_)
   {
     return;
   }
 
-  marker_sum_x_ += msg->pose.position.x;
-  marker_sum_y_ += msg->pose.position.y;
-  marker_sum_z_ += msg->pose.position.z;
+  cube_sum_x_ += msg->pose.position.x;
+  cube_sum_y_ += msg->pose.position.y;
+  cube_sum_z_ += msg->pose.position.z;
 
-  marker_sample_count_++;
+  cube_sample_count_++;
 
   RCLCPP_INFO(
     this->get_logger(),
     "Collected marker sample %d/%d: x=%.3f, y=%.3f, z=%.3f",
-    marker_sample_count_,
-    required_marker_samples_,
+    cube_sample_count_,
+    required_cube_samples_,
     msg->pose.position.x,
     msg->pose.position.y,
     msg->pose.position.z
   );
 
-  if (marker_sample_count_ == required_marker_samples_)
+  if (cube_sample_count_ == required_cube_samples_)
   {
-    marker_pose_ = *msg;
+    cube_pose_ = *msg;
 
-    marker_pose_.pose.position.x = marker_sum_x_ / marker_sample_count_;
-    marker_pose_.pose.position.y = marker_sum_y_ / marker_sample_count_;
-    marker_pose_.pose.position.z = marker_sum_z_ / marker_sample_count_;
+    cube_pose_.pose.position.x = cube_sum_x_ / cube_sample_count_;
+    cube_pose_.pose.position.y = cube_sum_y_ / cube_sample_count_;
+    cube_pose_.pose.position.z = cube_sum_z_ / cube_sample_count_;
 
-    has_marker_pose_ = true;
+    has_cube_pose_ = true;
   }
 }
 
@@ -113,14 +113,14 @@ void PiperXSimControl::runStateMachine()
     
     case PickState::WAIT_FOR_MARKER:
 
-      if (has_marker_pose_)
+      if (has_cube_pose_)
       {
         RCLCPP_INFO(
           this->get_logger(),
           "Target marker pose: x=%.3f, y=%.3f, z=%.3f",
-          marker_pose_.pose.position.x,
-          marker_pose_.pose.position.y,
-          marker_pose_.pose.position.z
+          cube_pose_.pose.position.x,
+          cube_pose_.pose.position.y,
+          cube_pose_.pose.position.z
         );
 
         current_state_ = PickState::MOVE_TO_PICK;
@@ -131,9 +131,9 @@ void PiperXSimControl::runStateMachine()
     case PickState::MOVE_TO_PICK:
       RCLCPP_INFO(this->get_logger(), "State: MOVE_TO_PICK");
 
-      if (moveTcpToMarker())
+      if (moveTcpToCube())
       {
-        current_state_ = PickState::CLOSE_GRIPPER;
+        current_state_ = PickState::GRASP;
       }
       else
       {
@@ -142,26 +142,18 @@ void PiperXSimControl::runStateMachine()
 
       break;
 
-    case PickState::CLOSE_GRIPPER:
-      RCLCPP_INFO(this->get_logger(), "State: CLOSE_GRIPPER");
+    case PickState::GRASP:
+      RCLCPP_INFO(this->get_logger(), "State: GRASP");
 
       moveGripperJoints(gripper_grasp_joints_);
 
-      current_state_ = PickState::LIFT;
+      current_state_ = PickState::PLACE;
 
       break;
 
-    case PickState::LIFT:
+    case PickState::PLACE:
 
-      if (moveArmJoints(scan_pose_joints_))
-      {
-        RCLCPP_INFO(this->get_logger(), "Lift succeeded.");
-        current_state_ = PickState::DONE;
-      }
-      else
-      {
-        RCLCPP_WARN(this->get_logger(), "Lift failed, retrying...");
-      }
+      // to be done
 
       break;
 
@@ -176,13 +168,13 @@ void PiperXSimControl::runStateMachine()
   }
 }
 
-bool PiperXSimControl::moveTcpToMarker()
+bool PiperXSimControl::moveTcpToCube()
 {
   geometry_msgs::msg::Pose target_pose;
 
-  target_pose.position.x = marker_pose_.pose.position.x;
-  target_pose.position.y = marker_pose_.pose.position.y;
-  target_pose.position.z = marker_pose_.pose.position.z;
+  target_pose.position.x = cube_pose_.pose.position.x;
+  target_pose.position.y = cube_pose_.pose.position.y;
+  target_pose.position.z = cube_pose_.pose.position.z;
 
   target_pose.orientation.x = 0.0;
   target_pose.orientation.y = 1.0;
@@ -267,9 +259,9 @@ int main(int argc, char ** argv)
 
   while (rclcpp::ok())
   {
-    node->runStateMachine();
-
     rclcpp::spin_some(node);
+
+    node->runStateMachine();
 
     rate.sleep();
   }
