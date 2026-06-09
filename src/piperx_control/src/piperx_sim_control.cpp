@@ -57,7 +57,7 @@ void PiperXSimControl::placePoseCallback(const geometry_msgs::msg::PoseStamped::
   {
     return;
   }
-  
+
   if (has_place_pose_)
   {
     return;
@@ -168,8 +168,24 @@ void PiperXSimControl::runStateMachine()
       break;
 
     case PickState::PLACE:
+      RCLCPP_INFO(this->get_logger(), "State: PLACE");
 
-      // to be done
+      if (moveTcpToPlace())
+      {
+        rclcpp::sleep_for(std::chrono::seconds(10));
+
+        moveGripperJoints(gripper_open_joints_);
+
+        RCLCPP_INFO(this->get_logger(), "Object placed. Pick-and-place complete.");
+
+        moveArmJoints(scan_pose_joints_);
+
+        current_state_ = PickState::DONE;
+      }
+      else
+      {
+        RCLCPP_WARN(this->get_logger(), "Place failed, retrying...");
+      }
 
       break;
 
@@ -219,6 +235,48 @@ bool PiperXSimControl::moveTcpToCube()
   else
   {
     RCLCPP_ERROR(this->get_logger(), "Pregrasp plan failed.");
+    arm_group_->clearPoseTargets();
+    return false;
+  }
+}
+
+bool PiperXSimControl::moveTcpToPlace()
+{
+  geometry_msgs::msg::Pose target_pose;
+
+  target_pose.position.x = place_pose_.pose.position.x;
+  target_pose.position.y = place_pose_.pose.position.y;
+
+  // The place marker is on the table, so do not move the TCP exactly to the marker surface.
+  target_pose.position.z = place_pose_.pose.position.z + 0.050;
+
+  target_pose.orientation.x = 0.0;
+  target_pose.orientation.y = 1.0;
+  target_pose.orientation.z = 0.0;
+  target_pose.orientation.w = 0.0;
+
+  arm_group_->setStartStateToCurrentState();
+  arm_group_->setPoseTarget(target_pose);
+
+  if (arm_group_->plan(arm_plan_) == moveit::core::MoveItErrorCode::SUCCESS)
+  {
+    RCLCPP_INFO(this->get_logger(), "Place plan succeeded. Executing...");
+    auto result = arm_group_->execute(arm_plan_);
+    arm_group_->clearPoseTargets();
+
+    if (result == moveit::core::MoveItErrorCode::SUCCESS)
+    {
+      return true;
+    }
+    else
+    {
+      RCLCPP_ERROR(this->get_logger(), "Place execute failed.");
+      return false;
+    }
+  }
+  else
+  {
+    RCLCPP_ERROR(this->get_logger(), "Place plan failed.");
     arm_group_->clearPoseTargets();
     return false;
   }
