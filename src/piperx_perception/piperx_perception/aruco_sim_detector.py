@@ -24,7 +24,7 @@ class ArucoSimDetector(Node):
         self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         self.aruco_params = aruco.DetectorParameters_create()
 
-        # Physical marker side length in meters
+        # Tuned ArUco marker size to match effective rendered scale
         self.marker_size = 0.055
 
         self.camera_matrix = None

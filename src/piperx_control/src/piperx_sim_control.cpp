@@ -83,12 +83,8 @@ void PiperXSimControl::initializeMoveIt()
   gripper_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
     shared_from_this(), "gripper");
 
-  arm_group_->setMaxVelocityScalingFactor(1);
-  arm_group_->setMaxAccelerationScalingFactor(1);
-
-  arm_group_->setGoalJointTolerance(0.001);
-  arm_group_->setGoalPositionTolerance(0.001);
-  arm_group_->setGoalOrientationTolerance(0.01);
+  arm_group_->setMaxVelocityScalingFactor(0.5);
+  arm_group_->setMaxAccelerationScalingFactor(0.5);
 
   if (!arm_group_->setEndEffectorLink("gripper_tcp"))
   {
@@ -114,6 +110,8 @@ void PiperXSimControl::runStateMachine()
 
       if (moveArmJoints(scan_pose_joints_))
       {
+        // to be deleted
+        rclcpp::sleep_for(std::chrono::seconds(5));
         current_state_ = PickState::WAIT_FOR_MARKERS;
       }
       else
@@ -177,7 +175,7 @@ void PiperXSimControl::runStateMachine()
       if (moveTcpToPlace())
       {
         // to be deleted
-        rclcpp::sleep_for(std::chrono::seconds(6));
+        rclcpp::sleep_for(std::chrono::seconds(5));
 
         moveGripperJoints(gripper_open_joints_);
 
