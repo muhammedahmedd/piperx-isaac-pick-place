@@ -18,6 +18,12 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
 
   place_motion_done_ = false;
 
+  has_joint_state_ = false;
+
+  arm_is_moving_ = true;
+
+  settle_velocity_threshold_ = 0.025;
+
   cube_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
     "/aruco/cube_pose_base",
     1,
@@ -28,6 +34,12 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
     "/aruco/place_pose_base",
     1,
     std::bind(&PiperXSimControl::placePoseCallback, this, std::placeholders::_1)
+  );
+
+  isaac_joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
+    "/isaac_joint_states",
+    1,
+    std::bind(&PiperXSimControl::isaacJointStateCallback, this, std::placeholders::_1)
   );
 }
 
@@ -79,6 +91,37 @@ void PiperXSimControl::placePoseCallback(const geometry_msgs::msg::PoseStamped::
   );
 }
 
+void PiperXSimControl::isaacJointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
+{
+  has_joint_state_ = true;
+
+  arm_is_moving_ = false;
+
+  for (int i = 0; i < msg->name.size(); ++i)
+  {
+
+    const std::string & joint_name = msg->name[i];
+
+    if (
+      joint_name == "joint1" ||
+      joint_name == "joint2" ||
+      joint_name == "joint3" ||
+      joint_name == "joint4" ||
+      joint_name == "joint5" ||
+      joint_name == "joint6"
+    )
+    {
+      double velocity = std::abs(msg->velocity[i]);
+
+      if (velocity > settle_velocity_threshold_)
+      {
+        arm_is_moving_ = true;
+        break;
+      }
+    }
+  }
+}
+
 void PiperXSimControl::initializeMoveIt()
 {
   arm_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
@@ -90,10 +133,7 @@ void PiperXSimControl::initializeMoveIt()
   arm_group_->setMaxVelocityScalingFactor(0.5);
   arm_group_->setMaxAccelerationScalingFactor(0.5);
 
-  if (!arm_group_->setEndEffectorLink("gripper_tcp"))
-  {
-    RCLCPP_ERROR(this->get_logger(), "Failed to set gripper_tcp as end-effector link.");
-  }
+  arm_group_->setEndEffectorLink("gripper_tcp");
 }  
 
 void PiperXSimControl::runStateMachine()
@@ -225,6 +265,16 @@ void PiperXSimControl::runStateMachine()
   }
 }
 
+bool PiperXSimControl::robotIsSettled()
+{
+  if (!has_joint_state_)
+  {
+    return false;
+  }
+
+  return !arm_is_moving_;
+}
+
 bool PiperXSimControl::moveTcpToCube()
 {
   geometry_msgs::msg::Pose target_pose;
@@ -273,7 +323,7 @@ bool PiperXSimControl::moveTcpToPlace()
   target_pose.position.y = place_pose_.pose.position.y;
 
   // The place marker is on the table, so we do not move the TCP exactly to the marker surface.
-  target_pose.position.z = 0.080;
+  target_pose.position.z = 0.045;
 
   target_pose.orientation.x = 0.0;
   target_pose.orientation.y = 1.0;

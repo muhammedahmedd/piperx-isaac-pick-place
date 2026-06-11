@@ -8,6 +8,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 
 include_directories(include)
@@ -17,6 +18,7 @@ add_executable(piperx_sim_control src/piperx_sim_control.cpp)
 ament_target_dependencies(piperx_sim_control
   rclcpp
   geometry_msgs
+  sensor_msgs
   moveit_ros_planning_interface
 )
 

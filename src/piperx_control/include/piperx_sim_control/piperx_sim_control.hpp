@@ -3,6 +3,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
 
 class PiperXSimControl : public rclcpp::Node
@@ -16,6 +17,8 @@ public:
   void cubePoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 
   void placePoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+
+  void isaacJointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
   
   void initializeMoveIt();
 
@@ -51,6 +54,8 @@ private:
 
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr place_pose_sub_;
 
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr isaac_joint_state_sub_;
+
   geometry_msgs::msg::PoseStamped cube_pose_;
 
   geometry_msgs::msg::PoseStamped place_pose_;
@@ -76,6 +81,12 @@ private:
   bool scan_motion_done_;
 
   bool place_motion_done_;
+
+  bool has_joint_state_;
+
+  bool arm_is_moving_;
+
+  double settle_velocity_threshold_;
 };
 
 #endif 
