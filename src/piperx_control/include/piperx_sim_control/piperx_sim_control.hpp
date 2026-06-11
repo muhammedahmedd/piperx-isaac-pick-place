@@ -29,6 +29,8 @@ public:
 
   void moveGripperJoints(const std::vector<double> & joint_angles);
 
+  bool robotIsSettled();
+
 
 private:
 
@@ -70,6 +72,10 @@ private:
   std::vector<double> gripper_open_joints_ = {0.050, -0.050};
 
   std::vector<double> gripper_grasp_joints_;
+
+  bool scan_motion_done_;
+
+  bool place_motion_done_;
 };
 
 #endif 

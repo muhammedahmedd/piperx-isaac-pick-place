@@ -14,6 +14,10 @@ PiperXSimControl::PiperXSimControl() : Node("piperx_sim_control")
   // Tuned for grasping the simulated cube (5 cm sides).
   gripper_grasp_joints_ = {0.015, -0.015};
 
+  scan_motion_done_ = false;
+
+  place_motion_done_ = false;
+
   cube_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
     "/aruco/cube_pose_base",
     1,
@@ -108,14 +112,28 @@ void PiperXSimControl::runStateMachine()
     case PickState::MOVE_TO_SCAN:
       RCLCPP_INFO(this->get_logger(), "State: MOVE_TO_SCAN");
 
-      if (moveArmJoints(scan_pose_joints_))
+      if (!scan_motion_done_)
       {
-        current_state_ = PickState::WAIT_FOR_MARKERS;
+        if (moveArmJoints(scan_pose_joints_))
+        {
+          scan_motion_done_ = true;
+        }
+        else
+        {
+          RCLCPP_WARN(this->get_logger(), "Scan pose failed, retrying...");
+        }
+
+        break;
+      }
+
+      if (!robotIsSettled())
+      {
+        RCLCPP_WARN(this->get_logger(), "Waiting for the arm to settle...");
       }
       else
       {
-        RCLCPP_WARN(this->get_logger(), "Scan pose failed, retrying...");
-      } 
+        current_state_ = PickState::WAIT_FOR_MARKERS;
+      }
 
       break;
     
@@ -170,11 +188,26 @@ void PiperXSimControl::runStateMachine()
     case PickState::PLACE:
       RCLCPP_INFO(this->get_logger(), "State: PLACE");
 
-      if (moveTcpToPlace())
+      if (!place_motion_done_)
       {
-        // to be deleted
-        rclcpp::sleep_for(std::chrono::seconds(8));
+        if (moveTcpToPlace())
+        {
+          place_motion_done_ = true;
+        }
+        else
+        {
+          RCLCPP_WARN(this->get_logger(), "Place failed, retrying...");
+        }
 
+        break;
+      }
+
+      if (!robotIsSettled())
+      {
+        RCLCPP_WARN(this->get_logger(), "Waiting for the arm to settle before opening gripper...");
+      }
+      else
+      {
         moveGripperJoints(gripper_open_joints_);
 
         RCLCPP_INFO(this->get_logger(), "Object placed. Pick-and-place complete.");
@@ -183,20 +216,11 @@ void PiperXSimControl::runStateMachine()
 
         current_state_ = PickState::DONE;
       }
-      else
-      {
-        RCLCPP_WARN(this->get_logger(), "Place failed, retrying...");
-      }
 
       break;
 
     case PickState::DONE:
         
-      break;
-
-    default:
-      RCLCPP_INFO(this->get_logger(), "State not implemented yet.");
-
       break;
   }
 }
