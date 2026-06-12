@@ -25,7 +25,8 @@ class ArucoSimDetector(Node):
         self.aruco_params = aruco.DetectorParameters_create()
 
         # Tuned ArUco marker size to match effective rendered scale
-        self.marker_size = 0.055
+        self.declare_parameter("marker_size", 0.055)
+        self.marker_size = self.get_parameter("marker_size").value
 
         self.camera_matrix = None
         self.dist_coeffs = None
@@ -163,15 +164,9 @@ class ArucoSimDetector(Node):
 
         if marker_id == 0:
             self.cube_pose_pub.publish(pose_msg)
-            self.get_logger().info(
-                "Published cube marker ID 0 pose to /aruco/cube_pose_base"
-            )
 
         elif marker_id == 1:
             self.place_pose_pub.publish(pose_msg)
-            self.get_logger().info(
-                "Published place marker ID 1 pose to /aruco/place_pose_base"
-            )
 
 def main(args=None):
     rclpy.init(args=args)

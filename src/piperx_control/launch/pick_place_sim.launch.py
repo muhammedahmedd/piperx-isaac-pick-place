@@ -6,7 +6,8 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     settle_velocity_threshold = LaunchConfiguration('settle_velocity_threshold')
-    
+    marker_size = LaunchConfiguration('marker_size')
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'settle_velocity_threshold',
@@ -14,11 +15,20 @@ def generate_launch_description():
             description='Joint velocity threshold used to decide when the arm is settled'
         ),
 
+        DeclareLaunchArgument(
+            'marker_size',
+            default_value='0.055',
+            description='ArUco marker side length in meters'
+        ),
+
         Node(
             package='piperx_perception',
             executable='aruco_sim_detector',
             name='aruco_sim_detector',
-            output='screen'
+            output='screen',
+            parameters=[
+                {'marker_size': marker_size}
+            ]
         ),
 
         Node(
