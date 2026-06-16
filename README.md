@@ -1,39 +1,51 @@
 # Piper X Pick-and-Place
 
-This repository contains a ROS 2 Humble pick-and-place project for the Piper X arm using MoveIt 2, Isaac Sim, ArUco marker detection, and a gripper TCP frame.
+This repository contains a ROS 2 Humble pick-and-place project for the Piper X arm using MoveIt 2, Isaac Sim, and ArUco marker detection.
 
-The project is designed to be used as the root of a ROS 2 workspace. The main project packages live inside `src/`, while external dependencies such as the Piper X simulation/MoveIt fork are cloned into `src/` separately.
+In Isaac Sim, the robot detects a cube with an ArUco tag on it, picks it up, and places it on a table at a target location marked by a second ArUco tag. In testing, the average placing error was 6 mm.
 
-## Repository structure
+The pick-and-place sequence is defined using a finite state machine (FSM), which moves the robot through the main phases of scanning, picking, lifting, placing, and completing the task in smaller steps.
 
-```text
-piperx_ws/
-├── Dockerfile
-├── compose.yaml
-├── ros_entrypoint.sh
-├── src/
-│   ├── piperx_control/
-│   ├── piperx_perception/
-│   └── agx_arm_sim/              # cloned separately
-└── README.md
+oveIt 2 is used for motion planning and execution, allowing the robot to plan and execute arm motions to the detected cube pose and target placement pose, while Isaac Sim provides the simulated robot, camera, and the scene.
+
+## Clone the repository
+
+```bash
+git clone https://github.com/muhammedahmedd/piperx-pick-place.git ~/piperx_ws
+cd ~/piperx_ws
 ```
 
 ## External dependencies
 
-This project uses a Piper X-focused fork of `agx_arm_sim`. It should be cloned into the workspace `src/` folder:
+This project depends on a Piper X-focused fork of `agx_arm_sim`. This fork contains the Piper X MoveIt configuration used with Isaac Sim.
+
+I modified this fork to synchronize the MoveIt setup with Isaac Sim simulation time. This includes updating MoveIt-related launch files so nodes such as `move_group`, `robot_state_publisher`, and `ros2_control_node` use Isaac Sim clock time from `/clock`.
+
+This fork also points to my Piper X URDF fork, where I added a fixed `gripper_tcp` frame. The `gripper_tcp` frame is used as the grasp reference frame for the gripper during pick-and-place.
+
+Clone it into the workspace `src/` folder:
 
 ```bash
 cd ~/piperx_ws
 git clone --recursive https://github.com/muhammedahmedd/piperx_arm_sim.git src/agx_arm_sim
 ```
 
-The `piperx_arm_sim` repository includes the Piper X MoveIt configuration and points to the Piper X URDF fork with the added `gripper_tcp` frame.
+The `--recursive` flag is important because `piperx_arm_sim` contains a URDF submodule. If you cloned it without `--recursive`, initialize the submodule manually:
+
+```bash
+cd ~/piperx_ws/src/agx_arm_sim
+git submodule update --init --recursive
+```
+
+For more details about the MoveIt simulation-time changes and the added `gripper_tcp` frame, see the README files inside the `piperx_arm_sim` and `piperx_arm_urdf` repositories.
 
 ## Docker setup
 
-This repository includes a Docker setup for the ROS 2 Humble and MoveIt 2 environment.
+This project includes a Docker setup for running the ROS 2 Humble and MoveIt 2 environment used by the pick-and-place system.
 
-Build the Docker image:
+The Docker image installs the ROS 2 and MoveIt dependencies needed for this project, including `topic_based_ros2_control`, which allows the Piper X MoveIt configuration to communicate with Isaac Sim through `/isaac_joint_command` and `/isaac_joint_states`.
+
+Build the Docker image from the workspace root:
 
 ```bash
 cd ~/piperx_ws
@@ -46,19 +58,19 @@ Start the container:
 docker compose up -d
 ```
 
-Enter the container:
+Enter the running container:
 
 ```bash
 docker exec -it ros2_humble bash
 ```
 
-The workspace is mounted into the container at:
+Inside the container, the workspace is available at:
 
 ```text
 /workspace/piperx_ws
 ```
 
-If your workspace is not located at `~/piperx_ws`, update the volume path in `compose.yaml`.
+This works because `compose.yaml` mounts the workspace from the host machine into the container. If your workspace is not located at `~/piperx_ws`, update the volume path in `compose.yaml`.
 
 ## Build the ROS 2 workspace
 
@@ -81,7 +93,5 @@ ros2 launch piper_x_gripper_moveit_config demo.launch.py
 The Piper X MoveIt configuration in `piperx_arm_sim` already includes the Isaac Sim topic-based ROS 2 control setup, so users do not need to manually modify the MoveIt hardware configuration.
 
 ## Notes
-
-Generated ROS folders such as `build/`, `install/`, and `log/` are ignored because they are created locally by `colcon build`.
 
 The Docker image provides the ROS 2 and MoveIt environment. The project workspace is mounted into the container so code changes can be made on the host machine and built inside the container.
