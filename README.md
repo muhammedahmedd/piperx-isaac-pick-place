@@ -8,6 +8,10 @@ The pick-and-place sequence is defined using a finite state machine (FSM), which
 
 oveIt 2 is used for motion planning and execution, allowing the robot to plan and execute arm motions to the detected cube pose and target placement pose, while Isaac Sim provides the simulated robot, camera, and the scene.
 
+The image below shows key frames from the Isaac Sim pick-and-place sequence.
+
+![Pick-and-place sequence](images/pick_place_sequence.png)
+
 ## Clone the repository
 
 ```bash
@@ -107,7 +111,7 @@ piperx_perception/aruco_sim_detector
 piperx_control/piperx_sim_control
 ```
 
-The `aruco_sim_detector` node detects the cube ArUco marker and the place ArUco marker from the Isaac Sim camera image and publishes their poses relative to the base_link frame. The `piperx_sim_control` node runs the finite state machine (FSM) that moves the robot through the pick-and-place sequence.
+The `aruco_sim_detector` node detects the cube ArUco marker and the place ArUco marker from the Isaac Sim camera image and publishes their poses relative to the `base_link` frame. The `piperx_sim_control` node runs the finite state machine (FSM) that moves the robot through the pick-and-place sequence.
 
 ### Launch parameters
 
