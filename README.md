@@ -32,8 +32,8 @@ This fork also points to my Piper X URDF fork, where I added a fixed `gripper_tc
 Clone it into the workspace `src/` folder:
 
 ```bash
+git clone https://github.com/muhammedahmedd/piperx-isaac-pick-place.git ~/piperx_ws
 cd ~/piperx_ws
-git clone --recursive https://github.com/muhammedahmedd/piperx_arm_sim.git src/agx_arm_sim
 ```
 
 The `--recursive` flag is important because `piperx_arm_sim` contains a URDF submodule. If you cloned it without `--recursive`, initialize the submodule manually:
