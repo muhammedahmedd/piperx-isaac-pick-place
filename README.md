@@ -17,8 +17,8 @@ Full demo video: [Watch the pick-and-place run](https://drive.google.com/file/d/
 ## Clone the repository
 
 ```bash
-git clone https://github.com/muhammedahmedd/piperx-pick-place.git ~/piperx_ws
-cd ~/piperx_ws
+git clone https://github.com/muhammedahmedd/piperx-pick-place.git ~/piperx_sim_ws
+cd ~/piperx_sim_ws
 ```
 
 ## External dependencies
@@ -32,14 +32,14 @@ This fork also points to my Piper X URDF fork, where I added a fixed `gripper_tc
 Clone it into the workspace `src/` folder:
 
 ```bash
-git clone https://github.com/muhammedahmedd/piperx-isaac-pick-place.git ~/piperx_ws
-cd ~/piperx_ws
+git clone https://github.com/muhammedahmedd/piperx-isaac-pick-place.git ~/piperx_sim_ws
+cd ~/piperx_sim_ws
 ```
 
 The `--recursive` flag is important because `piperx_arm_sim` contains a URDF submodule. If you cloned it without `--recursive`, initialize the submodule manually:
 
 ```bash
-cd ~/piperx_ws/src/agx_arm_sim
+cd ~/piperx_sim_ws/src/agx_arm_sim
 git submodule update --init --recursive
 ```
 
@@ -54,7 +54,7 @@ The Docker image installs the ROS 2 and MoveIt dependencies needed for this proj
 Build the Docker image from the workspace root:
 
 ```bash
-cd ~/piperx_ws
+cd ~/piperx_sim_ws
 docker compose build
 ```
 
@@ -73,17 +73,17 @@ docker exec -it ros2_humble bash
 Inside the container, the workspace is available at:
 
 ```text
-/workspace/piperx_ws
+/workspace/piperx_sim_ws
 ```
 
-This works because `compose.yaml` mounts the workspace from the host machine into the container. If your workspace is not located at `~/piperx_ws`, update the volume path in `compose.yaml`.
+This works because `compose.yaml` mounts the workspace from the host machine into the container. If your workspace is not located at `~/piperx_sim_ws`, update the volume path in `compose.yaml`.
 
 ## Build the ROS 2 workspace
 
 Inside the container:
 
 ```bash
-cd /workspace/piperx_ws
+cd /workspace/piperx_sim_ws
 colcon build
 source install/setup.bash
 ```
