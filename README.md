@@ -1,4 +1,4 @@
-# Piper X Pick-and-Place
+# Piper X Sim Pick-and-Place
 
 This repository contains a ROS 2 Humble pick-and-place project for the Piper X arm using MoveIt 2, Isaac Sim, and ArUco marker detection.
 
@@ -17,7 +17,7 @@ Full demo video: [Watch the pick-and-place run](https://drive.google.com/file/d/
 ## Clone the repository
 
 ```bash
-git clone https://github.com/muhammedahmedd/piperx-pick-place.git ~/piperx_sim_ws
+git clone https://github.com/muhammedahmedd/piperx_sim_pick_place.git ~/piperx_sim_ws
 cd ~/piperx_sim_ws
 ```
 
@@ -32,7 +32,7 @@ This fork also points to my Piper X URDF fork, where I added a fixed `gripper_tc
 Clone it into the workspace `src/` folder:
 
 ```bash
-git clone https://github.com/muhammedahmedd/piperx-isaac-pick-place.git ~/piperx_sim_ws
+git clone https://github.com/muhammedahmedd/piperx_sim_pick_place.git ~/piperx_sim_ws
 cd ~/piperx_sim_ws
 ```
 
