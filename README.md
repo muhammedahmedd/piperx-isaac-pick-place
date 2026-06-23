@@ -18,7 +18,7 @@ Full demo video: [Watch the pick-and-place run](https://drive.google.com/file/d/
 
 ```bash
 git clone https://github.com/muhammedahmedd/piperx-sim-pick-place.git ~/piperx_sim_ws
-cd ~/piperx_sim_ws
+cd piperx_sim_ws
 ```
 
 ## External dependencies
@@ -32,14 +32,14 @@ This fork also points to my Piper X URDF fork, where I added a fixed `gripper_tc
 Clone it into the workspace `src/` folder:
 
 ```bash
-cd ~/piperx_sim_ws/src
+cd piperx_sim_ws/src
 git clone --recursive https://github.com/muhammedahmedd/piperx_arm_sim.git agx_arm_sim
 ```
 
 The `--recursive` flag is important because `piperx_arm_sim` contains a URDF submodule. If you cloned it without `--recursive`, initialize the submodule manually:
 
 ```bash
-cd ~/piperx_sim_ws/src/agx_arm_sim
+cd piperx_sim_ws/src/agx_arm_sim
 git submodule update --init --recursive
 ```
 
@@ -54,7 +54,7 @@ The Docker image installs the ROS 2 and MoveIt dependencies needed for this proj
 Build the Docker image from the workspace root:
 
 ```bash
-cd ~/piperx_sim_ws
+cd piperx_sim_ws
 docker compose build
 ```
 
